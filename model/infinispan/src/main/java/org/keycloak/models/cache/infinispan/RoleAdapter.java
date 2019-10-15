@@ -17,6 +17,13 @@
 
 package org.keycloak.models.cache.infinispan;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleContainerModel;
 import org.keycloak.models.RoleModel;
@@ -24,14 +31,6 @@ import org.keycloak.models.cache.infinispan.entities.CachedClientRole;
 import org.keycloak.models.cache.infinispan.entities.CachedRealmRole;
 import org.keycloak.models.cache.infinispan.entities.CachedRole;
 import org.keycloak.models.utils.KeycloakModelUtils;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
@@ -140,19 +139,19 @@ public class RoleAdapter implements RoleModel {
 
         if (composites == null) {
             composites = new HashSet<>();
-            composites = cached.getComposites().stream()
-                    .map(id -> {
-                        RoleModel role = realm.getRoleById(id);
-                        if (role == null) {
-                            throw new IllegalStateException("Could not find composite in role " + getName() + ": " + id);
-                        }
-                        return role;
-                    }).collect(Collectors.toSet());
+            for (String id : cached.getComposites()) {
+                RoleModel role = realm.getRoleById(id);
+                if (role == null) {
+                    cacheSession.clear();
+                    continue;
+                }
+                composites.add(role);
+            }
         }
-
+        
         return composites.stream();
     }
-
+    
     @Override
     public Stream<RoleModel> getCompositesStream(String search, Integer first, Integer max) {
         if (isUpdated()) return updated.getCompositesStream(search, first, max);
@@ -171,15 +170,15 @@ public class RoleAdapter implements RoleModel {
         if (isUpdated()) return updated.getParentsStream();
 
         if (parents == null) {
-            parents = new HashSet<>();
-            parents = cached.getParents().stream()
-                    .map(id -> {
-                        RoleModel role = realm.getRoleById(id);
-                        if (role == null) {
-                            throw new IllegalStateException("Could not find composite in role " + getName() + ": " + id);
-                        }
-                        return role;
-                    }).collect(Collectors.toSet());
+            parents = new HashSet<RoleModel>();
+            for (String parentId : cached.getParents()) {
+                RoleModel role = realm.getRoleById(parentId);
+                if (role == null) {
+                    cacheSession.clear();
+                    continue;
+                }
+                parents.add(role);
+            }
         }
 
         return parents.stream();
@@ -282,4 +281,5 @@ public class RoleAdapter implements RoleModel {
     public int hashCode() {
         return getId().hashCode();
     }
+
 }

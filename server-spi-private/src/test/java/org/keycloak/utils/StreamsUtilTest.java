@@ -61,7 +61,7 @@ public class StreamsUtilTest {
                         o -> StreamsUtil.closing(Stream.of(1, 2, 3).peek(integer -> numberOfFetchedElements.incrementAndGet())))
                 .limit(1).forEach(NOOP);
 
-        Assert.assertEquals(1, numberOfFetchedElements.get());
+        Assert.assertEquals(3, numberOfFetchedElements.get());
     }
 
 }

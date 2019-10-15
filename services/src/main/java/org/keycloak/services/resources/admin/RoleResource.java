@@ -99,6 +99,16 @@ public abstract class RoleResource {
         adminEvent.operation(OperationType.CREATE).resourcePath(uriInfo).representation(roles).success();
     }
 
+    protected Set<RoleRepresentation> getRoleComposites(RoleModel role) {
+        if (!role.isComposite() || role.getComposites().size() == 0) return Collections.emptySet();
+
+        Set<RoleRepresentation> composites = new HashSet<RoleRepresentation>(role.getComposites().size());
+        for (RoleModel composite : role.getComposites()) {
+            composites.add(ModelToRepresentation.toBriefRepresentation(composite));
+        }
+        return composites;
+    }
+
     protected Stream<RoleRepresentation> getRealmRoleComposites(RoleModel role) {
         return role.getCompositesStream()
                 .filter(composite -> composite.getContainer() instanceof RealmModel)

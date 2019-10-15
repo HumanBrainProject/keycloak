@@ -32,11 +32,14 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -84,11 +87,19 @@ public class RoleEntity {
     @Column(name = "REALM_ID")
     private String realmId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "REALM")
+    private RealmEntity realm;
+
     @Column(name="CLIENT_ROLE")
     private boolean clientRole;
 
     @Column(name="CLIENT")
     private String clientId;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional=false)
+    @JoinColumn(name = "CLIENT", insertable=false, updatable=false)
+    private ClientEntity client;
 
     // Hack to ensure that either name+client or name+realm are unique. Needed due to MS-SQL as it don't allow multiple NULL values in the column, which is part of constraint
     @Column(name="CLIENT_REALM_CONSTRAINT", length = 36)
@@ -177,6 +188,15 @@ public class RoleEntity {
         this.clientRole = clientRole;
     }
 
+    public RealmEntity getRealm() {
+        return realm;
+    }
+
+    public void setRealm(RealmEntity realm) {
+        this.realm = realm;
+        this.clientRealmConstraint = realm.getId();
+    }
+
     public String getClientId() {
         return clientId;
     }
@@ -184,6 +204,17 @@ public class RoleEntity {
     public void setClientId(String clientId) {
         this.clientId = clientId;
         this.clientRealmConstraint = clientId;
+    }
+
+    public ClientEntity getClient() {
+        return client;
+    }
+
+    public void setClient(ClientEntity client) {
+        this.client = client;
+        if (client != null) {
+            this.clientRealmConstraint = client.getId();
+        }
     }
 
     public String getClientRealmConstraint() {
