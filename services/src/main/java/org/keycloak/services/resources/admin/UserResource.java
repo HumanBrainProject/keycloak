@@ -49,6 +49,7 @@ import org.keycloak.models.ModelDuplicateException;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.ModelIllegalStateException;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserConsentModel;
 import org.keycloak.models.UserCredentialModel;
 import org.keycloak.models.UserLoginFailureModel;
@@ -68,6 +69,7 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.ErrorRepresentation;
 import org.keycloak.representations.idm.FederatedIdentityRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserConsentRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.keycloak.representations.idm.UserSessionRepresentation;
@@ -936,7 +938,6 @@ public class UserResource {
      *
      * @param redirectUri Redirect uri
      * @param clientId Client id
-     * @param lifespan Number of seconds after which the generated token expires
      * @return
      */
     @Path("send-verify-email")
@@ -1153,5 +1154,26 @@ public class UserResource {
             this.clientId = clientId;
             this.lifespan = lifespan;
         }
+    }
+
+    @GET
+    @NoCache
+    @Path("role-by-id/{roleId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public RoleRepresentation userHasRole(@PathParam("roleId") String roleId) {
+
+        auth.users().requireView(user);
+
+        RoleModel role = realm.getRoleById(roleId);
+
+        if (role == null) {
+            throw new ErrorResponseException("not_found", "Role not found",Status.NOT_FOUND);
+        }
+
+        if(user.hasRole(role)) {
+            return ModelToRepresentation.toRepresentation(role);
+        }
+
+        throw new ErrorResponseException("access_denied", "Role not assigned to the user",Status.FORBIDDEN);
     }
 }

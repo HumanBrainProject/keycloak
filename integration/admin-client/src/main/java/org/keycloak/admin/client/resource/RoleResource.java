@@ -17,6 +17,7 @@
 
 package org.keycloak.admin.client.resource;
 
+import jakarta.ws.rs.DefaultValue;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.ManagementPermissionReference;
 import org.keycloak.representations.idm.ManagementPermissionRepresentation;
@@ -131,7 +132,7 @@ public interface RoleResource {
     @Path("users")
     @Produces(MediaType.APPLICATION_JSON)
     List<UserRepresentation> getUserMembers(@QueryParam("first") Integer firstResult,
-            @QueryParam("max") Integer maxResults);
+                                            @QueryParam("max") Integer maxResults);
 
     /**
      * Get role members.
@@ -147,8 +148,8 @@ public interface RoleResource {
     @Path("users")
     @Produces(MediaType.APPLICATION_JSON)
     List<UserRepresentation> getUserMembers(@QueryParam("briefRepresentation") Boolean briefRepresentation,
-            @QueryParam("first") Integer firstResult,
-            @QueryParam("max") Integer maxResults);
+                                            @QueryParam("first") Integer firstResult,
+                                            @QueryParam("max") Integer maxResults);
 
     /**
      * Get role groups.
@@ -173,7 +174,7 @@ public interface RoleResource {
     @Path("groups")
     @Produces(MediaType.APPLICATION_JSON)
     Set<GroupRepresentation> getRoleGroupMembers(@QueryParam("first") Integer firstResult,
-                                               @QueryParam("max") Integer maxResults);
+                                                 @QueryParam("max") Integer maxResults);
 
     /**
      * Get role members.
@@ -205,4 +206,14 @@ public interface RoleResource {
     @Deprecated
     Set<UserRepresentation> getRoleUserMembers(@QueryParam("first") Integer firstResult,
                                                @QueryParam("max") Integer maxResults);
+
+    @GET
+    @Path("parents")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Set<RoleRepresentation> getParentsRoles();
+
+    @GET
+    @Path("parents")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Set<RoleRepresentation> getParentsRoles(@QueryParam("briefRepresentation") @DefaultValue("true") boolean briefRepresentation);
 }
