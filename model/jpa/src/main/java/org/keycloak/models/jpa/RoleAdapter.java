@@ -119,6 +119,21 @@ public class RoleAdapter implements RoleModel, JpaModel<RoleEntity> {
                 getEntity().getCompositeRoles().stream().map(RoleEntity::getId),
                 search, first, max);
     }
+    
+    @Override
+    public void addParentRole(RoleModel role) {
+        RoleEntity entity = toRoleEntity(role);
+        for (RoleEntity parent : getEntity().getParentRoles()) {
+            if (parent.equals(entity)) return;
+        }
+        getEntity().getParentRoles().add(entity);
+    }
+    
+    @Override
+    public Stream<RoleModel> getParentsStream() {
+        Stream<RoleModel> composites = getEntity().getParentRoles().stream().map(c -> new RoleAdapter(session, realm, em, c));
+        return composites.filter(Objects::nonNull);
+    }
 
     @Override
     public boolean hasRole(RoleModel role) {
