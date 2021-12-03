@@ -51,6 +51,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -243,6 +244,7 @@ public class RoleByIdResource extends RoleResource {
                                                                 final @PathParam("clientUuid") String clientUuid) {
 
         RoleModel role = getRoleModel(id);
+        
         auth.roles().requireView(role);
         ClientModel clientModel = realm.getClientById(clientUuid);
         if (clientModel == null) {
@@ -268,9 +270,9 @@ public class RoleByIdResource extends RoleResource {
         auth.roles().requireManage(role);
         deleteComposites(adminEvent, session.getContext().getUri(), roles, role);
     }
-
+    
     /**
-     * Return object stating whether role Authorization permissions have been initialized or not and a reference
+     * Return object stating whether role Authoirzation permissions have been initialized or not and a reference
      *
      *
      * @param id

@@ -16,6 +16,7 @@
  */
 package org.keycloak.services.resources.admin;
 
+
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
@@ -37,22 +38,7 @@ import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
-import org.keycloak.models.AuthenticatedClientSessionModel;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.Constants;
-import org.keycloak.models.FederatedIdentityModel;
-import org.keycloak.models.GroupModel;
-import org.keycloak.models.IdentityProviderModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.ModelDuplicateException;
-import org.keycloak.models.ModelException;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserConsentModel;
-import org.keycloak.models.UserCredentialModel;
-import org.keycloak.models.UserLoginFailureModel;
-import org.keycloak.models.UserManager;
-import org.keycloak.models.UserModel;
-import org.keycloak.models.UserSessionModel;
+import org.keycloak.models.*;
 import org.keycloak.models.light.LightweightUserAdapter;
 import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.models.utils.RepresentationToModel;
@@ -61,15 +47,7 @@ import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.provider.ConfiguredProvider;
 import org.keycloak.provider.ProviderFactory;
-import org.keycloak.representations.idm.UserProfileAttributeMetadata;
-import org.keycloak.representations.idm.UserProfileMetadata;
-import org.keycloak.representations.idm.CredentialRepresentation;
-import org.keycloak.representations.idm.ErrorRepresentation;
-import org.keycloak.representations.idm.FederatedIdentityRepresentation;
-import org.keycloak.representations.idm.GroupRepresentation;
-import org.keycloak.representations.idm.UserConsentRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
-import org.keycloak.representations.idm.UserSessionRepresentation;
+import org.keycloak.representations.idm.*;
 import org.keycloak.services.ErrorResponse;
 import org.keycloak.services.ErrorResponseException;
 import org.keycloak.services.ForbiddenException;
@@ -132,6 +110,7 @@ import static org.keycloak.models.ImpersonationSessionNote.IMPERSONATOR_USERNAME
 import static org.keycloak.services.resources.admin.UserProfileResource.createUserProfileMetadata;
 import static org.keycloak.userprofile.UserProfileContext.USER_API;
 import static org.keycloak.utils.LockObjectsForModification.lockUserSessionsForModification;
+
 
 /**
  * Base resource for managing users
@@ -1039,6 +1018,27 @@ public class UserResource {
             user.joinGroup(group);
             adminEvent.operation(OperationType.CREATE).resource(ResourceType.GROUP_MEMBERSHIP).representation(ModelToRepresentation.toRepresentation(group, true)).resourcePath(session.getContext().getUri()).success();
         }
+    }
+
+    @GET
+    @NoCache
+    @Path("role-by-id/{roleId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public RoleRepresentation userHasRole(@PathParam("roleId") String roleId) {
+
+        auth.users().requireView(user);
+
+        RoleModel role = realm.getRoleById(roleId);
+
+        if (role == null) {
+            throw new ErrorResponseException("not_found", "Role not found",Status.NOT_FOUND);
+        }
+
+        if(user.hasRole(role)) {
+            return ModelToRepresentation.toRepresentation(role);
+        }
+
+        throw new ErrorResponseException("access_denied", "Role not assigned to the user",Status.FORBIDDEN);
     }
 
     /**

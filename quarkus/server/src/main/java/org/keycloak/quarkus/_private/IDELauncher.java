@@ -36,6 +36,10 @@ public class IDELauncher {
             // users can still provide a different folder by setting the property when starting it from their IDE.
             Path path = Paths.get(System.getProperty("user.dir"), "target", "kc");
             System.setProperty("kc.home.dir", path.toAbsolutePath().toString());
+            System.setProperty("kc.db", "mariadb");
+            System.setProperty("kc.db-url", "jdbc:mariadb://localhost:3306/keycloak");
+            System.setProperty("kc.db-username", "keycloak");
+            System.setProperty("kc.db-password", "keycloak");
         }
 
         if (devArgs.isEmpty()) {
