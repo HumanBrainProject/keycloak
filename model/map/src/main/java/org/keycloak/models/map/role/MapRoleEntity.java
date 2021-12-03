@@ -25,13 +25,7 @@ import org.keycloak.models.map.common.DeepCloner;
 import org.keycloak.models.map.common.EntityWithAttributes;
 import org.keycloak.models.map.common.UpdatableEntity;
 
-@GenerateEntityImplementations(
-  inherits = "org.keycloak.models.map.role.MapRoleEntity.AbstractRoleEntity"
-)
-@DeepCloner.Root
-public interface MapRoleEntity extends AbstractEntity, UpdatableEntity, EntityWithAttributes {
-
-    public abstract class AbstractRoleEntity extends UpdatableEntity.Impl implements MapRoleEntity {
+public class MapRoleEntity implements AbstractEntity, UpdatableEntity {
 
         private String id;
 
@@ -77,4 +71,15 @@ public interface MapRoleEntity extends AbstractEntity, UpdatableEntity, EntityWi
     void setCompositeRoles(Set<String> compositeRoles);
     void addCompositeRole(String roleId);
     void removeCompositeRole(String roleId);
+    
+    public Set<String> getParentRoles();
+    public void setParentRoles(Set<String> parentRoles);
+    public void addParentRole(String roleId);
+    public void removeParentRole(String roleId);
+    
+    Map<String, List<String>> getAttributes();
+    void setAttributes(Map<String, List<String>> attributes);
+    void setAttribute(String name, List<String> values);
+    void removeAttribute(String name);
+
 }

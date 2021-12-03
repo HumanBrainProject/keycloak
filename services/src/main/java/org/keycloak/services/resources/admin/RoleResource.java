@@ -35,6 +35,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import java.util.Collections;
+import java.util.stream.Collectors;
+
 /**
  * @resource Roles
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
@@ -83,6 +86,7 @@ public abstract class RoleResource {
                 throw new NotFoundException("Could not find composite role");
             }
             auth.roles().requireMapComposite(composite);
+            composite.addParentRole(role);
             role.addCompositeRole(composite);
         }
 
@@ -123,5 +127,17 @@ public abstract class RoleResource {
         }
 
         adminEvent.operation(OperationType.DELETE).resourcePath(uriInfo).representation(roles).success();
+    }
+    
+    protected Set<RoleRepresentation> getParentsRoles(RoleModel role, boolean briefRepresentation) {
+        Set<RoleModel> parentsRoles = role.getParentsStream().collect(Collectors.toSet());
+        
+        if (parentsRoles.isEmpty()) return Collections.emptySet();
+        
+        if(briefRepresentation) {
+            return parentsRoles.stream().map(r-> ModelToRepresentation.toBriefRepresentation(r)).collect(Collectors.toSet());
+        }
+        
+        return parentsRoles.stream().map(r-> ModelToRepresentation.toRepresentation(r)).collect(Collectors.toSet());
     }
 }

@@ -36,6 +36,7 @@ import org.keycloak.services.resources.admin.permissions.AdminPermissions;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -47,6 +48,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -246,6 +248,28 @@ public class RoleByIdResource extends RoleResource {
         RoleModel role = getRoleModel(id);
         auth.roles().requireManage(role);
         deleteComposites(adminEvent, session.getContext().getUri(), roles, role);
+    }
+    
+    /**
+     * Get parents of the roles, thoses which have the given role as composite
+     *
+     * @param id Role id
+     * @param briefRepresentation if false, return a full representation of the roles with their attributes
+     * @return parents of the roles
+     */
+    @Path("{role-id}/parents")
+    @GET
+    @NoCache
+    @Produces(MediaType.APPLICATION_JSON)
+    public Set<RoleRepresentation> getParentsRoles(final @PathParam("role-id") String id,
+                                                   final @QueryParam("briefRepresentation") @DefaultValue("true") boolean briefRepresentation) {
+        RoleModel role = getRoleModel(id);
+        auth.roles().requireManage(role);
+        if (role == null) {
+            throw new NotFoundException("Could not find role");
+        }
+        
+        return getParentsRoles(role, briefRepresentation);
     }
 
     /**
