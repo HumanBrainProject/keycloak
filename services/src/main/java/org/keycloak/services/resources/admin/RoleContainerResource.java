@@ -26,7 +26,6 @@ import jakarta.ws.rs.NotFoundException;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
 import org.keycloak.models.*;
-import org.keycloak.models.utils.KeycloakModelUtils;
 import org.keycloak.models.utils.ModelToRepresentation;
 import org.keycloak.models.utils.RoleUtils;
 import org.keycloak.representations.idm.GroupRepresentation;
@@ -58,7 +57,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.keycloak.services.ErrorResponseException;
 
 /**
  * @resource Roles
