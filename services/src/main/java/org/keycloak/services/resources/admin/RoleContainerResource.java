@@ -29,6 +29,7 @@ import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.Constants;
+import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.ModelDuplicateException;
 import org.keycloak.models.RealmModel;
@@ -60,13 +61,19 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.keycloak.services.ErrorResponseException;
 
 /**
  * @resource Roles
@@ -310,7 +317,6 @@ public class RoleContainerResource extends RoleResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Tag(name = KeycloakOpenAPI.Admin.Tags.ROLES)
     @Operation( summary = "Add a composite to the role")
-    @APIResponse(responseCode = "204", description = "No Content")
     public void addComposites(final @Parameter(description = "role's name (not id!)") @PathParam("role-name") String roleName, List<RoleRepresentation> roles) {
         auth.roles().requireManage(roleContainer);
         RoleModel role = roleContainer.getRole(roleName);
@@ -369,14 +375,14 @@ public class RoleContainerResource extends RoleResource {
      * @param clientUuid
      * @return
      */
-    @Path("{role-name}/composites/clients/{client-uuid}")
+    @Path("{role-name}/composites/clients/{clientUuid}")
     @GET
     @NoCache
     @Produces(MediaType.APPLICATION_JSON)
     @Tag(name = KeycloakOpenAPI.Admin.Tags.ROLES)
     @Operation( summary = "Get client-level roles for the client that are in the role's composite")
     public Stream<RoleRepresentation> getClientRoleComposites(final @Parameter(description = "role's name (not id!)") @PathParam("role-name") String roleName,
-                                                                final @PathParam("client-uuid") String clientUuid) {
+                                                                final @PathParam("clientUuid") String clientUuid) {
         auth.roles().requireView(roleContainer);
         RoleModel role = roleContainer.getRole(roleName);
         if (role == null) {
@@ -478,7 +484,6 @@ public class RoleContainerResource extends RoleResource {
      * @param roleName the role name.
      * @param firstResult first result to return. Ignored if negative or {@code null}.
      * @param maxResults maximum number of results to return. Ignored if negative or {@code null}.
-     * @param briefRepresentation Boolean which defines whether brief representations are returned (default: false)
      * @return a non-empty {@code Stream} of users.
      */
     @Path("{role-name}/users")
@@ -490,24 +495,34 @@ public class RoleContainerResource extends RoleResource {
     public Stream<UserRepresentation> getUsersInRole(final @Parameter(description = "the role name.") @PathParam("role-name") String roleName,
                                                     @Parameter(description = "Boolean which defines whether brief representations are returned (default: false)") @QueryParam("briefRepresentation") Boolean briefRepresentation,
                                                     @Parameter(description = "first result to return. Ignored if negative or {@code null}.") @QueryParam("first") Integer firstResult,
-                                                    @Parameter(description = "maximum number of results to return. Ignored if negative or {@code null}.") @QueryParam("max") Integer maxResults) {
-        
+                                                    @Parameter(description = "maximum number of results to return. Ignored if negative or {@code null}.") @QueryParam("max") Integer maxResults,
+                                                     @QueryParam("composite") @DefaultValue("false") boolean composite) {
+
         auth.roles().requireView(roleContainer);
-        firstResult = firstResult != null ? firstResult : 0;
-        maxResults = maxResults != null ? maxResults : Constants.DEFAULT_MAX_RESULTS;
-        
+
+        int effectiveFirstResult = Optional.ofNullable(firstResult).orElse(0);
+        int effectiveMaxResults = Optional.ofNullable(maxResults).orElse(Constants.DEFAULT_MAX_RESULTS);
+
         RoleModel role = roleContainer.getRole(roleName);
         if (role == null) {
             throw new NotFoundException("Could not find role");
         }
 
-        final Function<UserModel, UserRepresentation> toRepresentation = briefRepresentation != null && briefRepresentation
+        Function<UserModel, UserRepresentation> toRepresentation = Boolean.TRUE.equals(briefRepresentation)
                 ? ModelToRepresentation::toBriefRepresentation
                 : user -> ModelToRepresentation.toRepresentation(session, realm, user);
-        return session.users().getRoleMembersStream(realm, role, firstResult, maxResults)
-                .map(toRepresentation);
+
+        if (!composite) {
+            return session.users()
+                    .getRoleMembersStream(realm, role, effectiveFirstResult, effectiveMaxResults)
+                    .map(toRepresentation);
+        } else {
+            Set<UserModel> userModels = new HashSet<>();
+            getAllUsersInRole(role, new HashSet<>(), new HashSet<>(), userModels);
+            return userModels.stream().map(toRepresentation);
+        }
     }
-    
+
     /**
      * Returns a stream of groups that have the specified role name
      *
@@ -528,17 +543,64 @@ public class RoleContainerResource extends RoleResource {
                                                     @Parameter(description = "first result to return. Ignored if negative or {@code null}.") @QueryParam("first") Integer firstResult,
                                                     @Parameter(description = "maximum number of results to return. Ignored if negative or {@code null}.") @QueryParam("max") Integer maxResults,
                                                     @Parameter(description = "if false, return a full representation of the {@code GroupRepresentation} objects.") @QueryParam("briefRepresentation") @DefaultValue("true") boolean briefRepresentation) {
-        
+
         auth.roles().requireView(roleContainer);
         firstResult = firstResult != null ? firstResult : 0;
         maxResults = maxResults != null ? maxResults : Constants.DEFAULT_MAX_RESULTS;
-        
+
         RoleModel role = roleContainer.getRole(roleName);
         if (role == null) {
             throw new NotFoundException("Could not find role");
         }
-        
+
         return session.groups().getGroupsByRoleStream(realm, role, firstResult, maxResults)
                 .map(g -> ModelToRepresentation.toRepresentation(g, !briefRepresentation));
-    }   
+    }
+
+    protected void getAllUsersInRoleFromGroup(RoleModel role, GroupModel group, Set<String> visitedRoles,
+                                              Set<String> visitedGroups, Set<UserModel> users) {
+
+        if (!visitedGroups.contains(group.getId())) {
+            List<UserModel> usersInGroup = session.users().getGroupMembersStream(realm, group).collect(Collectors.toList());
+
+            users.addAll(usersInGroup);
+
+            // We define our current group as already visited
+            visitedGroups.add(group.getId());
+
+            Set<GroupModel> subGroups = group.getSubGroupsStream().collect(Collectors.toSet());
+
+            for(GroupModel subGroup : subGroups) {
+                getAllUsersInRoleFromGroup(role, subGroup, visitedRoles, visitedGroups, users);
+            }
+        }
+    }
+
+    protected void getAllUsersInRole(RoleModel role, Set<String> visitedRoles, Set<String> visitedGroups,
+                                     Set<UserModel> users) {
+
+        if (!visitedRoles.contains(role.getId())) {
+            // We found the users directly assign to this role and we add them to our set of users
+            Set<UserModel> usersForCurrentRole = new HashSet<UserModel>(
+                    session.users().getRoleMembersStream(realm, role).collect(Collectors.toSet()));
+
+            users.addAll(usersForCurrentRole);
+
+            // We define our current role as already visited
+            visitedRoles.add(role.getId());
+
+            Set<RoleModel> compositesRole = role.getParentsStream().collect(Collectors.toSet());
+
+            for (RoleModel compositeRole : compositesRole) {
+                getAllUsersInRole(compositeRole, visitedRoles, visitedGroups, users);
+            }
+
+            // We looks for groups directly assign to the role
+            List<GroupModel> groups = session.groups().getGroupsByRoleStream(realm, role, -1, -1).collect(Collectors.toList());
+
+            for (GroupModel group : groups) {
+                getAllUsersInRoleFromGroup(role, group, visitedRoles, visitedGroups, users);
+            }
+        }
+    }
 }

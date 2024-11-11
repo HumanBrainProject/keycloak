@@ -16,6 +16,7 @@
  */
 package org.keycloak.services.resources.admin;
 
+import jakarta.ws.rs.DefaultValue;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.extensions.Extension;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
@@ -52,6 +53,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -245,6 +247,7 @@ public class RoleByIdResource extends RoleResource {
                                                                 final @PathParam("clientUuid") String clientUuid) {
 
         RoleModel role = getRoleModel(id);
+
         auth.roles().requireView(role);
         ClientModel clientModel = realm.getClientById(clientUuid);
         if (clientModel == null) {
@@ -272,7 +275,7 @@ public class RoleByIdResource extends RoleResource {
     }
 
     /**
-     * Return object stating whether role Authorization permissions have been initialized or not and a reference
+     * Return object stating whether role Authoirzation permissions have been initialized or not and a reference
      *
      *
      * @param id
@@ -301,6 +304,29 @@ public class RoleByIdResource extends RoleResource {
         ref.setResource(permissions.roles().resource(role).getId());
         ref.setScopePermissions(permissions.roles().getPermissions(role));
         return ref;
+    }
+
+    /**
+     * Get parents of the roles, thoses which have the given role as composite
+     *
+     * @param id Role id
+     * @param briefRepresentation if false, return a full representation of the roles with their attributes
+     * @return parents of the roles
+     */
+    @Path("{role-id}/parents")
+    @GET
+    @NoCache
+    @Produces(MediaType.APPLICATION_JSON)
+    public Set<RoleRepresentation> getParentsRoles(final @PathParam("role-id") String id,
+                                                   final @QueryParam("briefRepresentation") @DefaultValue("true") boolean briefRepresentation) {
+        RoleModel role = getRoleModel(id);
+        auth.roles().requireManage(role);
+
+        if (role == null) {
+            throw new NotFoundException("Could not find role");
+        }
+
+        return getParentsRoles(role, briefRepresentation);
     }
 
     /**
